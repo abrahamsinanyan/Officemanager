@@ -1,0 +1,109 @@
+Code example
+"//Localization
+const i18n = require(""i18n"");
+
+//MomentJS
+const moment = require('moment');
+
+//Status controller
+const statusController = require('./statusController');
+
+//Sequalize models
+const Sequelize = require('sequelize');
+const db = require('../models');
+const Vacations = db.vacations;
+const Employees = db.employees;
+const Teams = db.teams;
+/**
+
+
+Gets vacations for current month
+@param {} req
+@param {} res
+*/
+exports.getVacations = (req,res)=> {
+
+//Getting current date start & end of month
+let dateVal = req.query.date_val;
+let user_id = req.query.user_id;
+const startOfMonth = moment(dateVal).startOf('month').format('YYYY-MM-DD');
+const endOfMonth = moment(dateVal).endOf('month').format('YYYY-MM-DD');
+
+console.log(req.query)
+let where = {
+$or:[
+{
+start_date:{
+$between: [startOfMonth, endOfMonth]
+},
+},
+{
+end_date:{
+$between: [startOfMonth, endOfMonth]
+},
+},
+]
+
+};
+
+if(user_id) where.employee_id = user_id;
+
+if(req.query.team){
+Teams.findAll({
+include: [
+{model:Employees,
+attributes: ['id','first_name', 'last_name','profile_img'],
+include:[{model: Vacations,where:where,order:[['employee_id','ASC']]}]
+},
+],
+
+order: [ [ Sequelize.literal(""teams.name""),'ASC' ] ]
+}
+).then((employees)=>{
+res.json(employees)
+})
+}
+
+else {
+Employees.findAll({
+include: [
+{model: Vacations,where:where,order:[['employee_id','ASC']]},
+], //required:false for left join
+attributes:['first_name','last_name']
+}).then(vacations => {
+res.json(vacations)
+})
+}
+
+}
+
+/**
+
+
+Adds a new vacation
+@param {} req
+@param {} res
+*/
+exports.addVacationUser = (req,res) =>{
+let q = req.body;
+q.start_date = moment( q.start_date).format('YYYY-MM-DD');
+q.end_date = moment( q.end_date).format('YYYY-MM-DD');
+if(q.team) req.query.team = true;
+
+let self = this;
+Vacations.create(req.body).then(()=>{
+req.query.date_val = req.body.start_date;
+this.getVacations(req,res);
+});
+}
+
+/**
+
+
+Removes a vacation by its id
+@param {} req
+@param {} res
+*/
+exports.removeVacation = (req,res)=>{
+let self = this;
+Vacations.de
